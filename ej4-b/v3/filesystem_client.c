@@ -8,14 +8,14 @@
 
 
 void
-filesystem_prg_1(char *host)
+filesystem_prg_1(char *host, char *filename)
 {
 	CLIENT *clnt;
 	struct response_H  *result_1;
 	struct read_H  readfile_1_arg;
 	int  *result_2;
 	struct write_H  writefile_1_arg;
-
+	FILE *local_file;
 #ifndef	DEBUG
 	clnt = clnt_create (host, filesystem_prg, filesystem_ver, "udp");
 	if (clnt == NULL) {
@@ -24,14 +24,34 @@ filesystem_prg_1(char *host)
 	}
 #endif	/* DEBUG */
 
+	readfile_1_arg.fileName = filename;
+	readfile_1_arg.offset = 0;
+	readfile_1_arg.count = 255;
 	result_1 = readfile_1(&readfile_1_arg, clnt);
-	if (result_1 == (struct response_H *) NULL) {
-		clnt_perror (clnt, "call failed");
+
+	/* concat .local to the filename */
+	char filename_local[180];
+	strcat(filename_local, filename);
+	strcat(filename_local,".local");
+	local_file = fopen(filename_local, "wb");
+
+	/* concat .remote to the filename */
+	char filename_remote[180];
+	strcat(filename_remote, filename);
+	strcat(filename_remote, ".remote");
+	writefile_1_arg.fileName = filename_remote;
+
+	while (result_1->bytes_readed != 0)
+	{
+		fwrite(result_1->data, sizeof(unsigned char), result_1->bytes_readed, local_file);	 
+		memcpy(writefile_1_arg.data, result_1->data, result_1->bytes_readed);
+		writefile_1_arg.count = result_1->bytes_readed;
+		result_2 = writefile_1(&writefile_1_arg, clnt);
+		readfile_1_arg.offset = readfile_1_arg.offset + 255;
+		result_1 = readfile_1(&readfile_1_arg, clnt);
 	}
-	result_2 = writefile_1(&writefile_1_arg, clnt);
-	if (result_2 == (int *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
+	
+
 #ifndef	DEBUG
 	clnt_destroy (clnt);
 #endif	 /* DEBUG */
@@ -41,13 +61,14 @@ filesystem_prg_1(char *host)
 int
 main (int argc, char *argv[])
 {
-	char *host;
+	char *host, *filename;
 
 	if (argc < 2) {
-		printf ("usage: %s server_host\n", argv[0]);
+		printf ("usage: %s server_host filename\n", argv[0]);
 		exit (1);
 	}
 	host = argv[1];
-	filesystem_prg_1 (host);
+	filename = argv[2];
+	filesystem_prg_1 (host, filename);
 exit (0);
 }
