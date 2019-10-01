@@ -10,7 +10,7 @@ struct response_H * readfile_1_svc(struct read_H *argp, struct svc_req *rqstp)
 
 	if (file == NULL)
 	{
-		printf("Can't open the file %s", argp->fileName);
+		printf("Can't open the file %s\n", argp->fileName);
 	} else {
 		fseek(file, argp->offset, SEEK_SET);
 		result.bytes_readed = fread(result.data, sizeof(unsigned char), argp->count, file);

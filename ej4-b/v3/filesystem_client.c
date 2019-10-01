@@ -26,28 +26,37 @@ filesystem_prg_1(char *host, char *filename)
 
 	readfile_1_arg.fileName = filename;
 	readfile_1_arg.offset = 0;
-	readfile_1_arg.count = 255;
+	readfile_1_arg.count = BUFFER_SIZE;
 	result_1 = readfile_1(&readfile_1_arg, clnt);
 
 	/* concat .local to the filename */
 	char filename_local[180];
+	memset(filename_local, '\0',180);
 	strcat(filename_local, filename);
 	strcat(filename_local,".local");
 	local_file = fopen(filename_local, "wb");
 
 	/* concat .remote to the filename */
 	char filename_remote[180];
+	memset(filename_remote, '\0',180);
 	strcat(filename_remote, filename);
 	strcat(filename_remote, ".remote");
 	writefile_1_arg.fileName = filename_remote;
 
 	while (result_1->bytes_readed != 0)
 	{
+		// Copy the data coming from the server to the local machine.
 		fwrite(result_1->data, sizeof(unsigned char), result_1->bytes_readed, local_file);	 
+		
+		// Copy the readed data to the write buffer 
 		memcpy(writefile_1_arg.data, result_1->data, result_1->bytes_readed);
+		
+		// Bytes to write
 		writefile_1_arg.count = result_1->bytes_readed;
 		result_2 = writefile_1(&writefile_1_arg, clnt);
-		readfile_1_arg.offset = readfile_1_arg.offset + 255;
+		
+		// Update the file position to read.
+		readfile_1_arg.offset = readfile_1_arg.offset + BUFFER_SIZE;
 		result_1 = readfile_1(&readfile_1_arg, clnt);
 	}
 	
