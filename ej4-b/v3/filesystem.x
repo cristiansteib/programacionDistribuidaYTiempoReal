@@ -2,8 +2,8 @@ const BUFFER_SIZE = 255;
 const FILE_NAME_SIZE = 100;
 
 struct response_H {
-	unsigned char data[BUFFER_SIZE]; 	/* Los bytes leidos */
-	int bytes_readed;					/* La cantidad que se pudo leer */
+	unsigned char data[BUFFER_SIZE];  	// Data readed
+	int bytes_readed;					// Effective count bytes readed
 };
 
 struct read_H {
