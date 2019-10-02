@@ -5,7 +5,6 @@
 #include <time.h>
 #include "vadd.h"  /* Created for us by rpcgen - has everything we need ! */
 /* Wrapper function takes care of calling the RPC procedure */
-#define BILLION 1000000000L
 
 int vadd( CLIENT *clnt, int *x, int n, struct timeval *tv) {
   iarray arr;
@@ -16,21 +15,12 @@ int vadd( CLIENT *clnt, int *x, int n, struct timeval *tv) {
   arr.iarray_len = n;
   arr.iarray_val = x;
 
+  clnt_control(clnt, CLSET_TIMEOUT, tv);
 
-  
-  //seteamos el timeout de RPC a 5 seg
-
-  clnt_control(clnt,CLSET_TIMEOUT, tv);
-
-
-  result = vadd_1(&arr,clnt);
+  result = vadd_1(&arr, clnt);
   if (result==NULL) {
     clnt_perror (clnt, "call failed");
-    exit(0);
   }
-
-
-
 
   return(*result);
 }
@@ -78,26 +68,26 @@ int main( int argc, char *argv[]) {
     clock_gettime( CLOCK_REALTIME, &start);
     res = vadd(clnt,ints,n,&timeout);
     clock_gettime( CLOCK_REALTIME, &stop);
-    tiempos[cant] = (stop.tv_sec - start.tv_sec ) + (stop.tv_nsec - start.tv_nsec );
+    tiempos[cant] = ((stop.tv_sec - start.tv_sec ) * 1000 * 1000 * 1000) + (stop.tv_nsec - start.tv_nsec );
   }
 
   for (int i=0; i<10; i++){
     printf("[%d] %f\n",i,tiempos[i]);
-    prom = prom + (tiempos[i]/1000);
+    prom = prom + (tiempos[i]);
   }
   
   prom = prom / 10;
-  printf("Promedio de los 10 RPC: %.2f Us \n", prom );
+  printf("Promedio de los 10 RPC: %.2f ns \n", prom );
   printf("Resultado de la suma: %d\n", res);
 
   printf("---------------------------------------------------\n");
   printf("---------Probando con timeout menor --------------\n");
   printf("---------------------------------------------------\n");
 
-  double tt = prom*0.4 ;
-  timeout.tv_usec = tt;
-  timeout.tv_sec = (tt/1000)/1000;
-  printf("Cambiando el timeout a: %ld \n", timeout.tv_usec );
+  double tt = prom*0.0060 ;
+  timeout.tv_usec = tt / 1000;
+  timeout.tv_sec = ((tt/1000)/1000)/1000;
+  printf("Cambiando el timeout a: %ld sec %ld uS \n", timeout.tv_sec,timeout.tv_usec );
 
   for (int cant=0; cant < 10; cant++){
     res = vadd(clnt,ints,n, &timeout);
