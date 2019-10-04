@@ -3,7 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include "vadd.h"  /* Created for us by rpcgen - has everything we need ! */
+#include <math.h>
+#include "vadd.h"
+
+#define CANT_RPC 10
+  /* Created for us by rpcgen - has everything we need ! */
 /* Wrapper function takes care of calling the RPC procedure */
 
 int vadd( CLIENT *clnt, int *x, int n, struct timeval *tv) {
@@ -11,7 +15,6 @@ int vadd( CLIENT *clnt, int *x, int n, struct timeval *tv) {
   int *result;
   double tiempo;
 
-  /* Set up the iarray to send to the server */
   arr.iarray_len = n;
   arr.iarray_val = x;
 
@@ -32,9 +35,9 @@ int main( int argc, char *argv[]) {
   struct timeval timeout;
   timeout.tv_sec = 5;
   timeout.tv_usec = 0;
-
+  double parteDecimal, parteEntera;
   struct timespec start, stop;
-  double tiempos[10];
+  double tiempos[CANT_RPC];
   double prom=0;
   CLIENT *clnt;
   int *ints,n;
@@ -45,7 +48,7 @@ int main( int argc, char *argv[]) {
     exit(0);
   }
  
-  clnt = clnt_create(argv[1], VADD_PROG, VADD_VERSION, "udp");
+  clnt = clnt_create(argv[1], VADD_PROG, VADD_VERSION, "tcp");
 
   /* Make sure the create worked */
   if (clnt == (CLIENT *) NULL) {
@@ -64,37 +67,40 @@ int main( int argc, char *argv[]) {
     ints[i-2] = atoi(argv[i]);
   }
 
-  for (int cant=0; cant < 10; cant++){
+  for (int cant=0; cant < CANT_RPC; cant++){
     clock_gettime( CLOCK_REALTIME, &start);
     res = vadd(clnt,ints,n,&timeout);
     clock_gettime( CLOCK_REALTIME, &stop);
     tiempos[cant] = ((stop.tv_sec - start.tv_sec ) * 1000 * 1000 * 1000) + (stop.tv_nsec - start.tv_nsec );
   }
 
-  for (int i=0; i<10; i++){
+  for (int i=0; i<CANT_RPC; i++){
     printf("[%d] %f\n",i,tiempos[i]);
     prom = prom + (tiempos[i]);
   }
   
-  prom = prom / 10;
+  prom = prom / CANT_RPC;
   printf("Promedio de los 10 RPC: %.2f ns \n", prom );
   printf("Resultado de la suma: %d\n", res);
+
 
   printf("---------------------------------------------------\n");
   printf("---------Probando con timeout menor --------------\n");
   printf("---------------------------------------------------\n");
 
-  double tt = prom*0.0060 ;
-  timeout.tv_usec = tt / 1000;
-  timeout.tv_sec = ((tt/1000)/1000)/1000;
+  double tt = (prom*0.8) / 1000000000 ;
+
+
+  parteDecimal = modf(tt, &parteEntera);
+  timeout.tv_usec = parteDecimal*1000000;
+  timeout.tv_sec = parteEntera;
+
   printf("Cambiando el timeout a: %ld sec %ld uS \n", timeout.tv_sec,timeout.tv_usec );
 
-  for (int cant=0; cant < 10; cant++){
+  for (int cant=0; cant < CANT_RPC; cant++){
     res = vadd(clnt,ints,n, &timeout);
     printf("[%d] %s\n",cant, (res==NULL)? "FAIL": "OK");
   }
-
-
 
   return(0);
 }
