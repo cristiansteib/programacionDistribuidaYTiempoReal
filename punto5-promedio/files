@@ -1,6 +1,0 @@
-Makefile
-README
-files
-vadd.x
-vadd_client.c
-vadd_service.c
