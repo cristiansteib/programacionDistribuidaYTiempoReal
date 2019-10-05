@@ -19,8 +19,10 @@ vadd_1_svc(iarray *argp, struct svc_req *rqstp)
 {
 	static int  result;
 	int i;
-	int r = rand() % 1500;
-	sleep(r/1000);
+
+	//Simulamos un retraso aleatorio en la comunicacion
+	sleep( (rand() % 1500) / 1000);
+	
 	printf("Got request: adding %d numbers\n",
 	       argp->iarray_len);
 

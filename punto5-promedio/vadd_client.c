@@ -88,7 +88,7 @@ int main( int argc, char *argv[]) {
   printf("---------Probando con timeout menor --------------\n");
   printf("---------------------------------------------------\n");
 
-  double tt = (prom*0.8) / 1000000000 ;
+  double tt = (prom*0.9) / 1000000000 ;
 
 
   parteDecimal = modf(tt, &parteEntera);
