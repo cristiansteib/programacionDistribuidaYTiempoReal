@@ -8,7 +8,7 @@ public class ReadWriteImplement extends UnicastRemoteObject implements IfaceRead
         super();
     }
 
-    public ReadStructure lectura(String nombreA, int cant, int pos) throws RemoteException {
+    public ReadStructure readFile(String nombreA, int cant, int pos) throws RemoteException {
 
         ReadStructure lectura = new ReadStructure();
         try {
@@ -33,13 +33,13 @@ public class ReadWriteImplement extends UnicastRemoteObject implements IfaceRead
         return lectura;
     }
 
-    public int escritura(String fileName, byte[] buffer, int cant) throws RemoteException {
-        int result = 0, i=0;
+    public int writeFile(String fileName, byte[] buffer, int cant) throws RemoteException {
+        int result = 0, i = 0;
         File ficheroDestino = new File(fileName);
         BufferedOutputStream escritorFichero;
         try {
             escritorFichero = new BufferedOutputStream(new FileOutputStream(ficheroDestino, true));
-            while (i<cant){
+            while (i < cant) {
                 escritorFichero.write(buffer[i]);//se copia el flujo de byes al fichero destino.
                 result++;
                 i++;

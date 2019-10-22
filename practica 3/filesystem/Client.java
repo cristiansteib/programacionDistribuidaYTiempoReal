@@ -32,15 +32,15 @@ public class Client {
 
             BufferedOutputStream bufferLocalWriter = new BufferedOutputStream(new FileOutputStream(ficheroDestinoCliente));
 
-            rl = remote.lectura(fileName, CHUNK_SIZE, index);
+            rl = remote.readFile(fileName, CHUNK_SIZE, index);
             while (rl.getCantBytesLeidos() != -1) {
                 System.out.println("Realizando escritura...");
-                remote.escritura(fileNameRemote, rl.getRetBytes(), rl.getCantBytesLeidos());
+                remote.writeFile(fileNameRemote, rl.getRetBytes(), rl.getCantBytesLeidos());
 
                 // Copy the data coming from the server to the local machine.
                 bufferLocalWriter.write(rl.getRetBytes(), 0, rl.getCantBytesLeidos());
                 index += CHUNK_SIZE;
-                rl = remote.lectura(fileName, CHUNK_SIZE, index);
+                rl = remote.readFile(fileName, CHUNK_SIZE, index);
             }
             bufferLocalWriter.close();
         } catch (FileNotFoundException fe) {
