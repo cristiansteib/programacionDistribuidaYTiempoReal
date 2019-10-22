@@ -2,21 +2,21 @@ import java.io.*;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
-public class ReadWriteImplement extends UnicastRemoteObject implements IfaceReadWrite {
+public class ReadWriteImplement extends UnicastRemoteObject implements FileSystemInterface {
 
     protected ReadWriteImplement() throws RemoteException {
         super();
     }
 
-    public ReadStructure readFile(String nombreA, int cant, int pos) throws RemoteException {
+    public FileReaderModel readFile(String nombreA, int cant, int pos) throws RemoteException {
 
-        ReadStructure lectura = new ReadStructure();
+        FileReaderModel fileReader = new FileReaderModel();
         try {
             BufferedInputStream in = new BufferedInputStream(new FileInputStream(nombreA));
             byte[] array = new byte[cant];
             in.skip(pos);   //managed by CHUNK_SIZE
-            lectura.setCantBytesLeidos(in.read(array, 0, cant));
-            lectura.setRetBytes(array);
+            fileReader.setCountBytesReaded(in.read(array, 0, cant));
+            fileReader.setBytes(array);
 
         } catch (FileNotFoundException fe) {
             System.out.println("El archivo a abrir no existe");
@@ -30,23 +30,23 @@ public class ReadWriteImplement extends UnicastRemoteObject implements IfaceRead
         } catch (Exception e) {
             System.out.println("Error desconocido");
         }
-        return lectura;
+        return fileReader;
     }
 
-    public int writeFile(String fileName, byte[] buffer, int cant) throws RemoteException {
-        int result = 0, i = 0;
-        File ficheroDestino = new File(fileName);
-        BufferedOutputStream escritorFichero;
+    public int writeFile(String fileName, byte[] buffer, int count) throws RemoteException {
+        int totalBytes = 0, index = 0;
+        File file = new File(fileName);
+        BufferedOutputStream fileBuffer;
         try {
-            escritorFichero = new BufferedOutputStream(new FileOutputStream(ficheroDestino, true));
-            while (i < cant) {
-                escritorFichero.write(buffer[i]);//se copia el flujo de byes al fichero destino.
-                result++;
-                i++;
+            fileBuffer = new BufferedOutputStream(new FileOutputStream(file, true));
+            while (index < count) {
+                fileBuffer.write(buffer[index]); //se copia el flujo de byes al fichero destino.
+                totalBytes++;
+                index++;
             }
             System.out.println("Escritura actual finalizada");
-            escritorFichero.close();
-            return result;
+            fileBuffer.close();
+            return totalBytes;
 
         } catch (Exception e) {
             e.printStackTrace();

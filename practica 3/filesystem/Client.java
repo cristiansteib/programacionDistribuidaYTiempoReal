@@ -20,27 +20,28 @@ public class Client {
         String fileNameRemote = args[1] + "_remoto";
 
         File ficheroDestinoCliente = new File(fileNameLocal);
-        ReadStructure rl;
+        FileReaderModel remoteFile;
         String fileName = args[1];
 
         int index = 0;  //
         final int CHUNK_SIZE = 255;
         try {
             //lookup RMI registry
-            String rname = "//" + args[0] + ":" + Registry.REGISTRY_PORT + "/remote";
-            IfaceReadWrite remote = (IfaceReadWrite) Naming.lookup(rname);
+            String registryAddress = "//" + args[0] + ":" + Registry.REGISTRY_PORT + "/remote";
+            FileSystemInterface remote = (FileSystemInterface) Naming.lookup(registryAddress);
 
             BufferedOutputStream bufferLocalWriter = new BufferedOutputStream(new FileOutputStream(ficheroDestinoCliente));
 
-            rl = remote.readFile(fileName, CHUNK_SIZE, index);
-            while (rl.getCantBytesLeidos() != -1) {
+            remoteFile = remote.readFile(fileName, CHUNK_SIZE, index);
+            
+            while (remoteFile.getCountBytesReaded() != -1) {
                 System.out.println("Realizando escritura...");
-                remote.writeFile(fileNameRemote, rl.getRetBytes(), rl.getCantBytesLeidos());
+                remote.writeFile(fileNameRemote, remoteFile.getBytes(), remoteFile.getCountBytesReaded());
 
                 // Copy the data coming from the server to the local machine.
-                bufferLocalWriter.write(rl.getRetBytes(), 0, rl.getCantBytesLeidos());
+                bufferLocalWriter.write(remoteFile.getBytes(), 0, remoteFile.getCountBytesReaded());
                 index += CHUNK_SIZE;
-                rl = remote.readFile(fileName, CHUNK_SIZE, index);
+                remoteFile = remote.readFile(fileName, CHUNK_SIZE, index);
             }
             bufferLocalWriter.close();
         } catch (FileNotFoundException fe) {
