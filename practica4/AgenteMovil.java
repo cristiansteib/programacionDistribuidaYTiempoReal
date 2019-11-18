@@ -16,6 +16,11 @@ import jade.domain.JADEAgentManagement.QueryPlatformLocationsAction;
 import jade.lang.acl.ACLMessage;
 import jade.proto.AchieveREInitiator;
 
+import javax.print.attribute.standard.OrientationRequested;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -25,15 +30,30 @@ public class AgenteMovil extends Agent {
     private Location origen;
     private Integer indexContainer = 0;
     private ArrayList<ContainerID> containersIds = new ArrayList<ContainerID>();
+    private ArrayList<SystemInfo> systemInfo = new ArrayList<SystemInfo>();
+    private Long  startTime = System.currentTimeMillis();
 
     public void setup() {
         origen = here();
         System.out.println("\n\nHola, agente con nombre local " + getLocalName());
         System.out.println("Y nombre completo... " + getName());
         System.out.println("Y en location " + origen.getID() + "\n\n");
-        addBehaviour(fillContainersList());
-        addBehaviour(new MoveToContainers(this));
+        Behaviour b = fillContainersList();
+        addBehaviour(b);
     }
+
+
+    public void addSystemInfo(SystemInfo s){
+        systemInfo.add(s);
+    }
+
+    public void printSystemInfo(){
+        for (SystemInfo sysInfo: systemInfo){
+            System.out.println(sysInfo.toString());
+        }
+    }
+
+
 
     class MoveToContainers extends SimpleBehaviour {
 
@@ -45,15 +65,32 @@ public class AgenteMovil extends Agent {
             this.a = a;
         }
 
+        void gatherSystemInfo() {
+            SystemInfo s = new SystemInfo();
+            try {
+                OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
+                s.hostname = InetAddress.getLocalHost().getHostName();
+                s.memoryAvailable = Runtime.getRuntime().freeMemory();
+                s.loadAverage = os.getSystemLoadAverage();
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            }
+            addSystemInfo(s);
+        }
+
         @Override
         public void action() {
             try {
+                gatherSystemInfo();
                 a.indexContainer = a.indexContainer + 1;
                 if (a.indexContainer >= a.containersIds.size()) {
-                    System.out.println("\nFin de recorrido");
+                    a.printSystemInfo();
+                    System.out.println("\nFin de recorrido, tiempo total: " + (System.currentTimeMillis() -  a.startTime) + "ms");
+                    finalize = true;
                     return;
                 }
                 doMove(a.containersIds.get(a.indexContainer));
+                this.action();
             } catch (Exception e) {
                 System.out.println("\n\n\nNo fue posible migrar el agente\n\n\n");
             }
@@ -94,10 +131,11 @@ public class AgenteMovil extends Agent {
                     platformContainers = (jade.util.leap.List) r.getValue();
                     Iterator iter = platformContainers.iterator();
                     System.out.println("Contenedores en la pataforma");
+                    System.out.println(platformContainers.size());
                     while (iter.hasNext()) {
                         containersIds.add(((ContainerID) iter.next()));
                     }
-
+                    addBehaviour(new MoveToContainers(AgenteMovil.this));
                 } catch (Exception e1) {
                     e1.printStackTrace();
                 }
@@ -111,42 +149,8 @@ public class AgenteMovil extends Agent {
         return b;
     }
 
-    protected void captureAndReportSysInfo() {
-
-    }
-
     protected void afterMove() {
         System.out.println("\n\nHola, agente migrado con nombre local " + getLocalName());
-        captureAndReportSysInfo();
-
     }
-
-        /* Me devuleve todos los agentes
-        AMSAgentDescription [] agents = null;
-
-        try {
-            SearchConstraints c = new SearchConstraints();
-            c.setMaxResults ( new Long(-1) );
-            agents = AMSService.search( this, new AMSAgentDescription (), c );
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
-        for (int i=0; i<agents.length;i++){
-            AID agentID = agents[i].getName();
-            System.out.println(agentID.getLocalName());
-        }
-        */
-    // Para migrar el agente
-
-        /*try {
-            ContainerID destino = new ContainerID("Main-Container", null);
-            System.out.println("Migrando el agente a " + destino.getID());
-            doMove(destino);
-        } catch (Exception e) {
-            System.out.println("\n\n\nNo fue posible migrar el agente\n\n\n");
-        }*/
-
-
 }
 
