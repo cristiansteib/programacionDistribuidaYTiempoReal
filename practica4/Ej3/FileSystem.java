@@ -11,25 +11,33 @@ import java.io.Serializable;
 //-container -host localhost AgenteCris:Ej3.FileSystem(send,testFileX)
 
 public class FileSystem extends Agent {
-    private Location origin;
+    private Location originLocation;
+    private Location serverLocation;
+    private FileData f;
+    private String operation;
     private static final int CHUNK_SIZE = 10;
+    private String pathToWriteFile;
+    private String pathToReadFile;
 
     public void setup() {
 
-        this.origin = here();
-        String operation = (String) getArguments()[0];
+        this.originLocation = here();
+        operation = (String) getArguments()[0];
         String fileName = (String) getArguments()[1];
         try {
             switch (operation) {
                 case "get":
-                    getFile(fileName);
+                    pathToWriteFile = "fs_local/";
+                    pathToReadFile = "fs_server";
+                    afterMove();
                     break;
                 case "send":
-                    sendFile(fileName);
+                    pathToWriteFile = "fs_server/";
+                    pathToReadFile = "fs_local/";
+                    afterMove();
                     break;
-                default:
-                    System.out.println("Parameter error, user get|send operations.");
             }
+
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(2);
@@ -49,27 +57,88 @@ public class FileSystem extends Agent {
             doMove(serverLocation);
             f = read(serverFilePath, offset, CHUNK_SIZE); // Lee el archivo del server
             offset += CHUNK_SIZE;
-            doMove(this.origin);
+            doMove(this.originLocation);
             write(localFilePath, f); // escribe en el origen
+            System.out.println(here());
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         } while (!f.finished());
     }
 
     private void sendFile(String fileName) throws IOException {
         int offset = 0;
-        Location destination = new ContainerID("Main-Container", null);
+        Location destination = new ContainerID("Main-Container",null);
         String originFilePath = "Ej3/fs_local/" + fileName;
         String serverFilePath = "Ej3/fs_server/" + fileName;
+        System.out.println(destination.getID());
+        System.out.println(this.originLocation.getID());
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         FileData f;
         do {
-            doMove(this.origin);
+
             f = read(originFilePath, offset, CHUNK_SIZE); // lee en el origen el file
             offset += CHUNK_SIZE;
+            System.out.println("NOW1: "+here().getName());
+
             doMove(destination); // Vuelve al server
             write(serverFilePath, f); // escribe en el server el file leido
+            System.out.println("NOW2: "+here().getName());
+            doMove(this.originLocation);
+
         } while (!f.finished());
     }
 
+    private void writeAndMove(Location location, FileData f, String path) {
+
+        write(pathToWriteFile, f); // escribe en el server el file leido
+
+        if (!f.finished()) {
+            doMove(location);
+        }
+    }
+
+    private void readAndMove(Location location) {
+
+        f = read(pathToReadFile); // escribe en el server el file leido
+
+        if (!f.finished()) {
+            doMove(location);
+        }
+    }
+
+    private Boolean iAmServer(){
+        return true;
+    }
+
+    @Override
+    protected void afterMove() {
+        switch (this.operation) {
+            
+            case "get":
+                if (iAmServer()) {
+                    readAndMove(originLocation);
+                } else {
+                    writeAndMove(serverLocation);
+                }
+                break;
+
+            case "send":
+                if (iAmServer()) {
+                    writeAndMove(originLocation);
+                } else {
+                    readAndMove(serverLocation);
+                }
+                break;
+        }
+    }
 
     public int write(String filePath, FileData fileData) {
         try {
