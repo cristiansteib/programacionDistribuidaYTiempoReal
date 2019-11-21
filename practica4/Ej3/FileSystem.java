@@ -12,75 +12,62 @@ import java.io.Serializable;
 
 public class FileSystem extends Agent {
     private Location origin;
-    private static final int  CHUNK_SIZE = 20;
+    private static final int CHUNK_SIZE = 10;
 
     public void setup() {
 
         this.origin = here();
         String operation = (String) getArguments()[0];
         String fileName = (String) getArguments()[1];
-
-        switch (operation) {
-            case "get":
-                try {
+        try {
+            switch (operation) {
+                case "get":
                     getFile(fileName);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    System.exit(2);
-                }
-                break;
-            case "send":
-                try {
+                    break;
+                case "send":
                     sendFile(fileName);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    System.exit(2);
-                }
-                break;
-            default:
-                System.out.println("Parameter error, user get|send operations.");
+                    break;
+                default:
+                    System.out.println("Parameter error, user get|send operations.");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(2);
         }
+
     }
 
 
     private void getFile(String fileName) throws IOException {
         int offset = 0;
         Location serverLocation = new ContainerID("Main-Container", null);
-        String localFilePath =  "Ej3/fs_local/" + fileName;
+        String localFilePath = "Ej3/fs_local/" + fileName;
         String serverFilePath = "Ej3/fs_server/" + fileName;
-        // Lo muevo al server
 
-        while (true) {
+        FileData f;
+        do {
             doMove(serverLocation);
-            FileData f = read(serverFilePath, offset, CHUNK_SIZE); // Lee el archivo del server
+            f = read(serverFilePath, offset, CHUNK_SIZE); // Lee el archivo del server
             offset += CHUNK_SIZE;
-
             doMove(this.origin);
             write(localFilePath, f); // escribe en el origen
-            if (f.finished()) {
-                break;
-            }
-        }
+        } while (!f.finished());
     }
 
     private void sendFile(String fileName) throws IOException {
         int offset = 0;
-        int chunkSize = 20;
         Location destination = new ContainerID("Main-Container", null);
         String originFilePath = "Ej3/fs_local/" + fileName;
         String serverFilePath = "Ej3/fs_server/" + fileName;
 
-        FileData f = read(originFilePath, offset, chunkSize);  // Leo el archivo del origen
-        offset += offset + chunkSize;
-        doMove(destination);  // Lo muevo al server
-        write(serverFilePath, f); // escribe en el server
-        while (!f.finished()) {
+        FileData f;
+        do {
             doMove(this.origin);
-            f = read(originFilePath, offset, chunkSize); // lee en el origen el file
-            offset += offset + chunkSize;
+            f = read(originFilePath, offset, CHUNK_SIZE); // lee en el origen el file
+            offset += CHUNK_SIZE;
             doMove(destination); // Vuelve al server
             write(serverFilePath, f); // escribe en el server el file leido
-        }
+        } while (!f.finished());
     }
 
 
@@ -91,10 +78,10 @@ public class FileSystem extends Agent {
             FileOutputStream fos = new FileOutputStream(file, true);
             fos.write(fileData.getData(), 0, fileData.getAmount());
             fos.close();
-            System.out.println("Se escribieron " + fileData.getAmount() + " bytes en " + fileData.getName());
+            System.out.println("Se escribieron " + fileData.getAmount() + " bytes en " + filePath);
             return fileData.getAmount();
         } catch (IOException e) {
-            System.out.println("Error leyendo archivo " + fileData.getName());
+            System.out.println("Error leyendo archivo " + filePath);
             return -1;
         }
     }
@@ -126,6 +113,7 @@ public class FileSystem extends Agent {
         }
     }
 }
+
 
 class FileData implements Serializable {
 
