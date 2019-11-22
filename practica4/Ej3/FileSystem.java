@@ -13,9 +13,9 @@ import java.io.Serializable;
 public class FileSystem extends Agent {
     private Location originLocation;
     private Location serverLocation;
-    private FileData f;
+    private FileData fileData;
     private String operation;
-    private static final int CHUNK_SIZE = 10;
+    private static final int CHUNK_SIZE = 10024;
     private String pathToWriteFile;
     private String pathToReadFile;
     private int currentReadOffset = 0;
@@ -29,13 +29,13 @@ public class FileSystem extends Agent {
 
         switch (operation) {
             case "get":
-                this.pathToWriteFile = "fs_local/" + fileName;
-                this.pathToReadFile = "fs_server/" + fileName;
+                this.pathToWriteFile = "Ej3/fs_local/" + fileName;
+                this.pathToReadFile = "/home/cristian/IdeaProjects/programacionDistribuidaYTiempoReal/practica4/Ej3/fs_server/" + fileName;
                 afterMove();
                 break;
             case "send":
-                this.pathToWriteFile = "fs_server/" + fileName;
-                this.pathToReadFile = "fs_local/" + fileName;
+                this.pathToWriteFile = "/home/cristian/IdeaProjects/programacionDistribuidaYTiempoReal/practica4/Ej3/fs_server/" + fileName;
+                this.pathToReadFile = "Ej3/fs_local/" + fileName;
                 afterMove();
                 break;
             default:
@@ -45,20 +45,21 @@ public class FileSystem extends Agent {
     }
 
     private void writeAndMove(Location location) {
-        write(pathToWriteFile, f);
-        if (!f.finished()) {
+        if (fileData != null) {
+            write(pathToWriteFile, fileData);
+        }
+        if (fileData == null || !fileData.finished()) {
             doMove(location);
         }
     }
 
     private void readAndMove(Location location) {
-        f = read(pathToReadFile);
+        fileData = read(pathToReadFile);
         doMove(location);
     }
 
-    private Boolean iAmServer() {
-        // TODO
-        return true;
+    private Boolean iAmHome() {
+        return here().getID().equals(this.originLocation.getID());
     }
 
     @Override
@@ -66,18 +67,18 @@ public class FileSystem extends Agent {
         switch (this.operation) {
 
             case "get":
-                if (iAmServer()) {
-                    readAndMove(originLocation);
-                } else {
+                if (iAmHome()) {
                     writeAndMove(serverLocation);
+                } else {
+                    readAndMove(originLocation);
                 }
                 break;
 
             case "send":
-                if (iAmServer()) {
-                    writeAndMove(originLocation);
-                } else {
+                if (iAmHome()) {
                     readAndMove(serverLocation);
+                } else {
+                    writeAndMove(originLocation);
                 }
                 break;
         }
@@ -93,7 +94,8 @@ public class FileSystem extends Agent {
             System.out.println("Se escribieron " + fileData.getAmount() + " bytes en " + filePath);
             return fileData.getAmount();
         } catch (IOException e) {
-            System.out.println("Error leyendo archivo " + filePath);
+            System.out.println("Error escribiendo archivo " + filePath);
+            e.printStackTrace();
             return -1;
         }
     }
@@ -114,7 +116,6 @@ public class FileSystem extends Agent {
             fis.close();
 
             System.out.println("Se leyeron " + amountRead + " bytes de " + filePath);
-            System.out.println(finished);
             currentReadOffset += CHUNK_SIZE;
             return new FileData(filePath, bytesArray, finished, amountRead);
 
