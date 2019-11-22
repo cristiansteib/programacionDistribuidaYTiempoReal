@@ -18,110 +18,53 @@ public class FileSystem extends Agent {
     private static final int CHUNK_SIZE = 10;
     private String pathToWriteFile;
     private String pathToReadFile;
+    private int currentReadOffset = 0;
 
     public void setup() {
 
         this.originLocation = here();
+        this.serverLocation = new ContainerID("Main-Container", null);
         operation = (String) getArguments()[0];
         String fileName = (String) getArguments()[1];
-        try {
-            switch (operation) {
-                case "get":
-                    pathToWriteFile = "fs_local/";
-                    pathToReadFile = "fs_server";
-                    afterMove();
-                    break;
-                case "send":
-                    pathToWriteFile = "fs_server/";
-                    pathToReadFile = "fs_local/";
-                    afterMove();
-                    break;
-            }
 
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.exit(2);
+        switch (operation) {
+            case "get":
+                this.pathToWriteFile = "fs_local/" + fileName;
+                this.pathToReadFile = "fs_server/" + fileName;
+                afterMove();
+                break;
+            case "send":
+                this.pathToWriteFile = "fs_server/" + fileName;
+                this.pathToReadFile = "fs_local/" + fileName;
+                afterMove();
+                break;
+            default:
+                System.out.println("Invalid operation, use get|send");
+                System.exit(2);
         }
-
     }
 
-
-    private void getFile(String fileName) throws IOException {
-        int offset = 0;
-        Location serverLocation = new ContainerID("Main-Container", null);
-        String localFilePath = "Ej3/fs_local/" + fileName;
-        String serverFilePath = "Ej3/fs_server/" + fileName;
-
-        FileData f;
-        do {
-            doMove(serverLocation);
-            f = read(serverFilePath, offset, CHUNK_SIZE); // Lee el archivo del server
-            offset += CHUNK_SIZE;
-            doMove(this.originLocation);
-            write(localFilePath, f); // escribe en el origen
-            System.out.println(here());
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        } while (!f.finished());
-    }
-
-    private void sendFile(String fileName) throws IOException {
-        int offset = 0;
-        Location destination = new ContainerID("Main-Container",null);
-        String originFilePath = "Ej3/fs_local/" + fileName;
-        String serverFilePath = "Ej3/fs_server/" + fileName;
-        System.out.println(destination.getID());
-        System.out.println(this.originLocation.getID());
-        try {
-            Thread.sleep(2000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        FileData f;
-        do {
-
-            f = read(originFilePath, offset, CHUNK_SIZE); // lee en el origen el file
-            offset += CHUNK_SIZE;
-            System.out.println("NOW1: "+here().getName());
-
-            doMove(destination); // Vuelve al server
-            write(serverFilePath, f); // escribe en el server el file leido
-            System.out.println("NOW2: "+here().getName());
-            doMove(this.originLocation);
-
-        } while (!f.finished());
-    }
-
-    private void writeAndMove(Location location, FileData f, String path) {
-
-        write(pathToWriteFile, f); // escribe en el server el file leido
-
+    private void writeAndMove(Location location) {
+        write(pathToWriteFile, f);
         if (!f.finished()) {
             doMove(location);
         }
     }
 
     private void readAndMove(Location location) {
-
-        f = read(pathToReadFile); // escribe en el server el file leido
-
-        if (!f.finished()) {
-            doMove(location);
-        }
+        f = read(pathToReadFile);
+        doMove(location);
     }
 
-    private Boolean iAmServer(){
+    private Boolean iAmServer() {
+        // TODO
         return true;
     }
 
     @Override
     protected void afterMove() {
         switch (this.operation) {
-            
+
             case "get":
                 if (iAmServer()) {
                     readAndMove(originLocation);
@@ -140,7 +83,7 @@ public class FileSystem extends Agent {
         }
     }
 
-    public int write(String filePath, FileData fileData) {
+    private int write(String filePath, FileData fileData) {
         try {
             File file = new File(filePath);
             System.out.println("Escribiendo: " + filePath);
@@ -155,15 +98,15 @@ public class FileSystem extends Agent {
         }
     }
 
-    public FileData read(String filePath, int offset, int amount) throws IOException {
+    private FileData read(String filePath) {
         try {
             System.out.println(filePath);
             File file = new File(filePath);
 
             FileInputStream fis = new FileInputStream(file);
-            fis.skip(offset);
+            fis.skip(currentReadOffset);
 
-            byte[] bytesArray = new byte[Math.min(amount, fis.available())];
+            byte[] bytesArray = new byte[Math.min(CHUNK_SIZE, fis.available())];
             int amountRead = fis.read(bytesArray);
 
             boolean finished = fis.available() == 0;
@@ -172,13 +115,14 @@ public class FileSystem extends Agent {
 
             System.out.println("Se leyeron " + amountRead + " bytes de " + filePath);
             System.out.println(finished);
-
+            currentReadOffset += CHUNK_SIZE;
             return new FileData(filePath, bytesArray, finished, amountRead);
 
         } catch (IOException e) {
             System.out.println("Error leyendo archivo " + filePath);
             e.printStackTrace();
-            throw new IOException();
+            System.exit(127);
+            return null;
         }
     }
 }
