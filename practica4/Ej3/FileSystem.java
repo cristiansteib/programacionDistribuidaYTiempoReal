@@ -30,11 +30,11 @@ public class FileSystem extends Agent {
         switch (operation) {
             case "get":
                 this.pathToWriteFile = "Ej3/fs_local/" + fileName;
-                this.pathToReadFile = "/home/cristian/IdeaProjects/programacionDistribuidaYTiempoReal/practica4/Ej3/fs_server/" + fileName;
-                afterMove();
+                this.pathToReadFile = "Ej3/fs_server/" + fileName;
+                doMove(serverLocation);
                 break;
             case "send":
-                this.pathToWriteFile = "/home/cristian/IdeaProjects/programacionDistribuidaYTiempoReal/practica4/Ej3/fs_server/" + fileName;
+                this.pathToWriteFile = "Ej3/fs_server/" + fileName;
                 this.pathToReadFile = "Ej3/fs_local/" + fileName;
                 afterMove();
                 break;
@@ -45,10 +45,8 @@ public class FileSystem extends Agent {
     }
 
     private void writeAndMove(Location location) {
-        if (fileData != null) {
-            write(pathToWriteFile, fileData);
-        }
-        if (fileData == null || !fileData.finished()) {
+        write(pathToWriteFile, fileData);
+        if (!fileData.finished()) {
             doMove(location);
         }
     }
